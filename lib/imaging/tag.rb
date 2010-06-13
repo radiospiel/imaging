@@ -1,3 +1,5 @@
+require "cgi"
+
 class Imaging::Tag < String
 
   #

@@ -1,9 +1,17 @@
 class Imaging::Identify < Hash
 
   def initialize(*urls)
+    files, real_urls = urls.partition do |url|
+      (url =~ /^(http|https):\/\//).nil?
+    end
+    
+    identify_urls(real_urls)
+    identify_files(files)
+  end
+
+  def curl_multi(urls)
     #
     # build Curl::Multi object
-    
     multi = Curl::Multi.new
     multi.pipeline = true
     multi.max_connects = 10
@@ -11,48 +19,69 @@ class Imaging::Identify < Hash
     urls.each do |url|
       c = Curl::Easy.new(url) do |curl|
         curl.follow_location = true
-        curl.on_body  { |data| image_file(url).write(data) }
+        curl.on_body  { |data| temp_file(url).write(data) }
       end
       multi.add(c)
     end
+    
+    multi
+  end
 
+  def identify_files(files)
+    return if files.empty?
+    
+    %x(identify #{files.join(" ")}).
+      split("\n").
+      each do |line|
+        file, kind, size = *line.split(/\s+/)
+        file.sub!(/\[[0-9]+\]$/, "")
+
+        if block_given?
+          yield file, size
+        else
+          self[file] = size
+        end
+      end
+  end
+  
+  def identify_urls(urls)
+    @temp_files = {}
+    
     #
     # download all files into temporary locations
-    multi.perform
+    curl_multi(urls).perform
+    close_temp_files
 
     #
     # identify all temporary files
-    args, path_to_url = [], {}
-    image_files.each do |url, file|
+    path_to_url = {}
+    @temp_files.each do |url, file|
       path_to_url[file.path] = url
-      args << file.path
     end
-    
-    image_files.values.each(&:close)
-    
-    return nil if args.empty?
-      
-    %x(identify #{args.join(" ")}).split("\n").each do |line|
-      file, kind, size = *line.split(/\s+/)
-      file.sub!(/\[[0-9]+\]$/, "")
-      
+
+    identify_files(path_to_url.keys) do |file, size|
       update path_to_url[file] => size
     end
   ensure
-    image_files.each do |_,file|
-      file.close
-    end
-    
-    @image_files = nil
+    close_temp_files
+    @temp_files = nil
   end
 
-  private
-  
-  def image_files
-    @image_files ||= {}
+  def close_temp_files
+    return unless @temp_files
+    @temp_files.values.each(&:close)
   end
   
-  def image_file(url)
-    image_files[url] ||= Tempfile.new("img")
+  def temp_file(url)
+    @temp_files[url] ||= Tempfile.new("img")
   end
+  #     private
+  # 
+  # def image_files
+  #   @image_files ||= {}
+  # end
+  # 
+  # def image_file(url)
+  #   image_files[url] ||= Tempfile.new("img")
+  # end
 end
