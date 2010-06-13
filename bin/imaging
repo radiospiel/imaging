@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+
+if ARGV == %w(--install)
+  require "fileutils"
+  
+  FileUtils.rm($0)
+  FileUtils.symlink(__FILE__, $0)
+  exit
+elsif defined?(Gem)
+  STDERR.puts "Note: please run improved installation via\n\n\tsudo #{$0} --install"
+end
+
+begin
+  path = File.readlink(__FILE__)
+rescue Errno::EINVAL
+  path = __FILE__
+end
+
+$: << File.expand_path(File.dirname(path) + "/../lib")
+
+load "imaging.rb"
+
+Imaging.exec *ARGV

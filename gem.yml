@@ -1,0 +1,11 @@
+#
+# A vex/gem config file.
+version:      0.1
+authors:      ["parkaboy"]
+email:        eno@open-lab.org
+homepage:     http://radiospiel.org
+summary:      cached command line tool
+description:  |
+  The 'imaging' command line tool provides various options to identify and modify an image.
+
+dependencies: curb
