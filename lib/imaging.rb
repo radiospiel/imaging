@@ -5,7 +5,7 @@ FastGem.load "json"
 
 require 'tempfile'
 
-if true
+if false
   
 TEST_URLS = <<-TXT
 http://3columns.net/habitual/docs/images/ruby.png
@@ -37,19 +37,88 @@ end
 module Imaging; end
 
 require "imaging/identify"
+require "imaging/tag"
 
 module Imaging
+  #
+  # Identify a single URL
+  module Base
+    def identify(url)
+      Identify.new(url).values.first
+    end
+  end
+  
+  extend Base
+  
+  #
+  # Caching
+  module Cache
+    module HashCache
+      def get(key)
+        fetch(key)
+      rescue IndexError
+      end
+
+      def set(key, value)
+        update key => value
+      end
+    end
+
+    class DummyCache
+      def self.get(key); end
+      def self.set(key, value); end
+    end
+    
+    def cache=(cache)
+      if cache.is_a?(Hash)
+        cache.extend HashCache
+      end
+      @cache = cache
+    end
+
+    def cache
+      @cache || DummyCache
+    end
+
+    def identify(url)
+      cache.get(url) || begin
+        r = super
+        cache.set(url, r)
+        r
+      end
+    end
+  end
+  
+  extend Cache
+
+  #
+  # Testcase
+  # def self.tag(*args)
+  #   self.cache = {}
+  #   
+  #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 12)
+  #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 12, :fill => true)
+  # 
+  #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 12, :height => 12, :fill => true)
+  #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 12, :height => 12)
+  # 
+  #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 12, :fill => true)
+  #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 12)
+  # 
+  #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 120, :height => 12)
+  #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 120, :height => 12, :fill => true)
+  # end
+    
   def self.exec(*args)
     if defined?(TEST_URLS)
       args = TEST_URLS.split("\n") 
     end
     
-    return unless r = Identify::run(*args)
+    return unless r = Identify.new(*args)
     if args.length == 1
-      r = r.values.first 
-      puts r
+      r.values.first 
     else
-      puts r.to_json
+      r.to_json
     end
   end
 end

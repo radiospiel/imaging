@@ -20,4 +20,4 @@ $: << File.expand_path(File.dirname(path) + "/../lib")
 
 load "imaging.rb"
 
-Imaging.exec *ARGV
+puts Imaging.exec *ARGV

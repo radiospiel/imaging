@@ -1,13 +1,6 @@
-class Imaging::Identify
-  def self.image_files
-    @image_files ||= {}
-  end
-  
-  def self.image_file(url)
-    image_files[url] ||= Tempfile.new("img")
-  end
-  
-  def self.run(*urls)
+class Imaging::Identify < Hash
+
+  def initialize(*urls)
     #
     # build Curl::Multi object
     
@@ -37,21 +30,29 @@ class Imaging::Identify
     
     image_files.values.each(&:close)
     
-    result = {}
-    
     return nil if args.empty?
       
     %x(identify #{args.join(" ")}).split("\n").each do |line|
       file, kind, size = *line.split(/\s+/)
       file.sub!(/\[[0-9]+\]$/, "")
       
-      result[path_to_url[file]] = size
+      update path_to_url[file] => size
     end
-    
-    result
   ensure
     image_files.each do |_,file|
       file.close
     end
+    
+    @image_files = nil
+  end
+
+  private
+  
+  def image_files
+    @image_files ||= {}
+  end
+  
+  def image_file(url)
+    image_files[url] ||= Tempfile.new("img")
   end
 end
