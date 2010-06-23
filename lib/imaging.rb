@@ -43,8 +43,8 @@ module Imaging
   #
   # Identify a single URL
   module Base
-    def identify(url)
-      Identify.new(url).values.first
+    def identify(*urls)
+      Identify.new(*urls)
     end
   end
   
@@ -53,6 +53,8 @@ module Imaging
   #
   # Caching
   module Cache
+    SLICE = 16
+    
     module HashCache
       def get(key)
         fetch(key)
@@ -80,12 +82,23 @@ module Imaging
       @cache || DummyCache
     end
 
-    def identify(url)
-      cache.get(url) || begin
-        r = super
-        cache.set(url, r)
-        r
+    def identify(*urls)
+      results = {}
+      
+      missed_urls = urls.reject do |url|
+        if r = cache.get(url)
+          results[url] = r
+        end
       end
+
+      missed_urls.each_slice(SLICE) do |slice|
+        super(*slice).each do |url,r|
+          cache.set(url, r)
+          results.update url => r
+        end
+      end
+      
+      results
     end
   end
   
@@ -108,6 +121,10 @@ module Imaging
   #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 120, :height => 12)
   #   STDERR.puts Tag.new("http://www.lshift.net/img/lshiftLogo50.png", :width => 120, :height => 12, :fill => true)
   # end
+
+  def self.tag(url, opts)
+    Tag.new(url, opts)
+  end
     
   def self.exec(*args)
     if defined?(TEST_URLS)

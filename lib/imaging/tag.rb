@@ -70,7 +70,8 @@ class Imaging::Tag < String
   private
   
   def identify_to_width_and_height(url)
-    if Imaging.identify(url) =~ /(\d+)x(\d+)/
+    width_x_height = Imaging.identify(url).values.first
+    if width_x_height =~ /(\d+)x(\d+)/
       return [ $1.to_i, $2.to_i ]
     end
   end
