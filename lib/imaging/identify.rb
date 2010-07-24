@@ -36,11 +36,10 @@ class Imaging::Identify < Hash
         file, kind, size = *line.split(/\s+/)
         file.sub!(/\[[0-9]+\]$/, "")
 
-        if block_given?
-          yield file, size
-        else
-          self[file] = size
-        end
+        next if self[file]
+        self[file] = size
+
+        yield file, size if block_given?
       end
   end
   
